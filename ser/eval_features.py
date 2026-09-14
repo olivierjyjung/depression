@@ -19,6 +19,7 @@ from sklearn.model_selection import StratifiedKFold, RepeatedStratifiedKFold, Gr
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
+from scipy.stats import rankdata
 
 CS = np.logspace(-4, 2, 13)
 
@@ -98,9 +99,23 @@ def official(df, cols, seed=0):
 
 
 def repeated_cv(df, cols, n_repeats=20, seed=0):
-    """Out-of-fold scores over all 189 speakers, averaged across repeats."""
+    """Out-of-fold evaluation over all 189 speakers.
+
+    Predicted probabilities from different folds are not on a common scale. The inner CV
+    often drives C to the grid floor, which leaves the coefficient near zero and the
+    prediction dominated by that fold's intercept; pooling raw probabilities then ranks
+    speakers partly by which fold they landed in. Measured on single features, that cost
+    0.08-0.12 AUC (lat_median 0.632 -> 0.557), so it is fixed two ways here:
+
+      - each fold's scores are rank normalized within the fold before pooling, which
+        keeps the within-fold ordering and makes folds comparable;
+      - the per-fold AUC is averaged as well, which needs no pooling at all.
+
+    Both are returned; they should agree, and disagreement is itself worth seeing.
+    """
     y = df.y.values
     acc, cnt = np.zeros(len(df)), np.zeros(len(df))
+    fold_aucs = []
     rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=n_repeats, random_state=seed)
     for tr, te in rskf.split(np.zeros(len(df)), y):
         fit = np.zeros(len(df), bool); fit[tr] = True
@@ -112,10 +127,12 @@ def repeated_cv(df, cols, n_repeats=20, seed=0):
         gs.fit(Z[tr], y[tr])
         clf = LogisticRegression(C=gs.best_params_["logisticregression__C"],
                                  max_iter=5000).fit(Z[tr], y[tr])
-        acc[te] += clf.predict_proba(Z[te])[:, 1]
+        p = clf.predict_proba(Z[te])[:, 1]
+        fold_aucs.append(fast_auc(y[te], p))
+        acc[te] += rankdata(p) / (len(p) + 1.0)
         cnt[te] += 1
     s = acc / np.maximum(cnt, 1)
-    return float(roc_auc_score(y, s)), s
+    return float(fast_auc(y, s)), float(np.mean(fold_aucs)), s
 
 
 def paired_bootstrap(y, sa, sb, n_boot=40000, seed=0, n_compare=1):
@@ -164,13 +181,16 @@ def main():
     rows, cv_scores, off_scores = [], {}, {}
     for name, cols in SETS.items():
         o, so = official(df, cols)
-        cv_auc, scv = repeated_cv(df, cols, a.repeats)
+        cv_auc, fold_auc, scv = repeated_cv(df, cols, a.repeats)
         cv_scores[name], off_scores[name] = scv, so
-        rows.append(dict(name=name, n_feat=len(cols), **o, auc_cv189=cv_auc))
+        rows.append(dict(name=name, n_feat=len(cols), **o,
+                         auc_cv189=cv_auc, auc_perfold=fold_auc))
         print(f"  {name:14s} n={len(cols):2d} dev {o['auc_dev']:.3f} "
-              f"test {o['auc_test']:.3f} | cv189 {cv_auc:.3f}", flush=True)
+              f"test {o['auc_test']:.3f} | cv189 {cv_auc:.3f} "
+              f"perfold {fold_auc:.3f}", flush=True)
 
-    res = pd.DataFrame(rows)[["name", "n_feat", "C", "auc_dev", "auc_test", "auc_cv189"]]
+    res = pd.DataFrame(rows)[["name", "n_feat", "C", "auc_dev", "auc_test",
+                              "auc_cv189", "auc_perfold"]]
     print("\n=== feature sets ===")
     print(res.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
 

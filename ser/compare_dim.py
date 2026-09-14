@@ -38,10 +38,11 @@ def main():
     sets = {"emb1024": ecols, "neg_mean": ["neg_mean"], "lat_median": ["lat_median"]}
     rows, scores = [], {}
     for name, cols in sets.items():
-        auc, s = repeated_cv(df, cols, a.repeats)
+        auc, fold_auc, s = repeated_cv(df, cols, a.repeats)
         scores[name] = s
-        rows.append(dict(name=name, n_feat=len(cols), auc_cv189=float(auc)))
-        print(f"  {name:12s} n_feat {len(cols):5d}  cv189 {auc:.3f}", flush=True)
+        rows.append(dict(name=name, n_feat=len(cols), auc_cv189=float(auc),
+                         auc_perfold=float(fold_auc)))
+        print(f"  {name:12s} n_feat {len(cols):5d}  cv189 {auc:.3f} perfold {fold_auc:.3f}", flush=True)
 
     y = df.y.values
     b = paired_bootstrap(y, scores["emb1024"], scores["neg_mean"], a.boot)
