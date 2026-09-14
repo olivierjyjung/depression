@@ -22,6 +22,26 @@ from sklearn.metrics import roc_auc_score
 
 CS = np.logspace(-4, 2, 13)
 
+
+def fast_auc(y, s):
+    """Rank-based AUC. Same value as roc_auc_score, fast enough for 40k resamples."""
+    order = np.argsort(s, kind="mergesort")
+    ys = y[order]
+    ss = s[order]
+    ranks = np.empty(len(s), dtype=np.float64)
+    i = 0
+    while i < len(ss):                       # average ranks within ties
+        j = i
+        while j + 1 < len(ss) and ss[j + 1] == ss[i]:
+            j += 1
+        ranks[i:j + 1] = 0.5 * (i + j) + 1.0
+        i = j + 1
+    npos = ys.sum()
+    nneg = len(ys) - npos
+    if npos == 0 or nneg == 0:
+        return np.nan
+    return float((ranks[ys == 1].sum() - npos * (npos + 1) / 2.0) / (npos * nneg))
+
 CONTROLS = ["lat_median", "neg_mean", "neu_mean"]
 CONTRAST = ["neg_symptom_vs_neutral", "neg_negative_vs_neutral", "pos_positive_vs_neutral"]
 LATEMO = ["lat_symptom_vs_neutral", "lat_neg_corr"]
@@ -98,18 +118,31 @@ def repeated_cv(df, cols, n_repeats=20, seed=0):
     return float(roc_auc_score(y, s)), s
 
 
-def paired_bootstrap(y, sa, sb, n_boot=10000, seed=0):
-    obs = roc_auc_score(y, sb) - roc_auc_score(y, sa)
+def paired_bootstrap(y, sa, sb, n_boot=40000, seed=0, n_compare=1):
+    """Paired resampling of the evaluated speakers, models held fixed.
+
+    Reports the plain 95% interval and a Bonferroni-widened one, because several feature
+    sets are compared against the same baseline here; with 7 comparisons, one interval
+    excluding zero by chance is more likely than not.
+    """
+    obs = fast_auc(y, sb) - fast_auc(y, sa)
     rng = np.random.default_rng(seed)
-    d = []
+    d = np.empty(n_boot)
+    k = 0
     for _ in range(n_boot):
         i = rng.integers(0, len(y), len(y))
-        if len(np.unique(y[i])) < 2:
+        yi = y[i]
+        if yi.sum() == 0 or yi.sum() == len(yi):
             continue
-        d.append(roc_auc_score(y[i], sb[i]) - roc_auc_score(y[i], sa[i]))
-    d = np.asarray(d)
-    return dict(observed=float(obs), lo=float(np.percentile(d, 2.5)),
-                hi=float(np.percentile(d, 97.5)), p_worse=float((d < 0).mean()))
+        d[k] = fast_auc(yi, sb[i]) - fast_auc(yi, sa[i])
+        k += 1
+    d = d[:k]
+    alpha = 0.05 / max(n_compare, 1)
+    return dict(observed=float(obs), n_boot=int(k),
+                lo=float(np.percentile(d, 2.5)), hi=float(np.percentile(d, 97.5)),
+                lo_adj=float(np.percentile(d, 100 * alpha / 2)),
+                hi_adj=float(np.percentile(d, 100 * (1 - alpha / 2))),
+                p_worse=float((d < 0).mean()))
 
 
 def main():
@@ -118,7 +151,7 @@ def main():
     ap.add_argument("--data", default="/data/daic")
     ap.add_argument("--out", default="/work/eval")
     ap.add_argument("--repeats", type=int, default=20)
-    ap.add_argument("--boot", type=int, default=10000)
+    ap.add_argument("--boot", type=int, default=40000)
     a = ap.parse_args()
 
     f = pd.read_csv(a.features)
@@ -143,19 +176,33 @@ def main():
 
     y = df.y.values
     yt = y[(df.split == "test").values]
-    print(f"\n=== gain over lat_median, paired bootstrap ===")
+    ncmp = len(SETS) - 1
+    print(f"\n=== gain over lat_median, paired bootstrap "
+          f"(95% CI, then Bonferroni for {ncmp} comparisons) ===")
     boots = []
+    mt = (df.split == "test").values
     for name in SETS:
         if name == "lat_only":
             continue
-        b189 = paired_bootstrap(y, cv_scores["lat_only"], cv_scores[name], a.boot)
-        mt = (df.split == "test").values
-        b47 = paired_bootstrap(yt, off_scores["lat_only"][mt], off_scores[name][mt], a.boot)
+        b189 = paired_bootstrap(y, cv_scores["lat_only"], cv_scores[name], a.boot,
+                                n_compare=ncmp)
+        b47 = paired_bootstrap(yt, off_scores["lat_only"][mt], off_scores[name][mt],
+                               a.boot, n_compare=ncmp)
         boots.append(dict(name=name, cv189=b189, test47=b47))
-        v189 = "worse" if b189["hi"] < 0 else "better" if b189["lo"] > 0 else "unresolved"
-        print(f"  {name:14s} cv189 {b189['observed']:+.3f} "
-              f"[{b189['lo']:+.3f},{b189['hi']:+.3f}] {v189:10s} | "
-              f"test47 {b47['observed']:+.3f} [{b47['lo']:+.3f},{b47['hi']:+.3f}]")
+        for tag, b in (("cv189 ", b189), ("test47", b47)):
+            v = "better" if b["lo"] > 0 else "worse" if b["hi"] < 0 else "unresolved"
+            vadj = ("better" if b["lo_adj"] > 0 else
+                    "worse" if b["hi_adj"] < 0 else "unresolved")
+            print(f"  {name:14s} {tag} {b['observed']:+.3f} "
+                  f"95% [{b['lo']:+.3f},{b['hi']:+.3f}] {v:10s} | "
+                  f"adj [{b['lo_adj']:+.3f},{b['hi_adj']:+.3f}] {vadj}")
+
+    print(f"\n=== diagnostic: single features, raw AUC over all 189 ===")
+    for c in CONTROLS + NEW:
+        v = df[c].values.astype(float)
+        ok = np.isfinite(v)
+        print(f"  {c:26s} {fast_auc(y[ok], v[ok]):.3f}  "
+              f"(n={int(ok.sum())})")
 
     os.makedirs(a.out, exist_ok=True)
     res.to_csv(f"{a.out}/turn_feature_eval.csv", index=False)
