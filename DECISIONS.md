@@ -1,0 +1,371 @@
+# DECISIONS — depression (DAIC-WoZ / speech × text)
+
+## 2026-09-01 — 3번째 corpus를 외부 검증용으로, 영어·발화과제까지 넓혀서 찾음
+
+- **정해야 했던 것:** E-DAIC 확보 후 추가로 찾을 corpus의 용도와 수집 범위. 용도에 따라
+  요건이 완전히 달라짐 (검증용이면 라벨 척도가 달라도 되고, 증강용이면 PHQ-8이 필수)
+- **선택지:**
+  - 용도: A) 외부 검증용 / B) 학습 데이터 증강용 / C) 둘 다 노리고 넓게 수집
+  - 범위: A) 영어 임상면접만 / B) 비영어 면접까지 / C) 면접 아닌 발화과제까지
+- **고른 것:** 용도 = **외부 검증용**, 범위 = **면접 아닌 발화과제까지, 단 영어 한정**
+- **이유:** 명시 안 됨 (사용자가 옵션 설명의 trade-off를 보고 선택)
+- **내가 걸었던 반대:** 면접이 아니면 response latency("질문 끝 → 응답 시작")를 계산할 수
+  없어서 지금 유일하게 작동하는 speech feature를 검증할 수 없음. 사용자가 이를 보고 선택해
+  재차 반대하지 않음. 대신 스크리닝 표에 "latency 계산 가능 여부"를 1급 컬럼으로 넣고
+  불가능한 corpus는 *text-only 검증용*으로 분류하는 것으로 흡수함
+- **결과:** `0902_report.md` (구 `0901_external_corpus_screening.md`, 발표자료로 통합)
+  - 영어 후보 8종 정리. **PHQ-8을 쓰는 영어 corpus는 RADAR-MDD 하나뿐**, 나머지는 PHQ-9
+  - **영어 corpus는 전부 monologue** — 면접 형식은 DAIC 계열 외 영어권에 사실상 없음.
+    범위를 안 넓혔으면 후보 0개였음
+  - 사수가 말한 "CONDOR"는 **CANDOR의 오기로 추정**. 단 CANDOR에 우울 라벨이 없어
+    external validation set으로는 못 씀 (latency normative reference로는 쓸 수 있음)
+  - **E-DAIC은 participant side 전사만 배포** → 배포 전사만으로 latency 계산 불가.
+    raw audio + ASR + diarization이 필요함
+  - 우리 조건 중 monologue corpus로 그대로 이식되는 건 **`발화만`(judge_no_codipas) 하나**
+- **다음 할 일:**
+  - [ ] 사수 확인: "CONDOR" = CANDOR 맞는지 / 확보한 E-DAIC에 raw audio 포함 여부
+  - [ ] RADAR-MDD 신청 절차·소요기간 (PHQ-8 문항별 점수 제공 여부 포함)
+  - [ ] StudentSADD data agreement form 제출
+  - [ ] 외부 검증 채점 방식 결정 (PHQ-9 → PHQ-8 환산 / threshold 이전 방식)
+
+## 2026-09-01 — short-context feature는 두 계열 다 설계하고 이식 가능 여부를 태그로 표시
+
+- **정해야 했던 것:** 회의 결론 #5의 short-context feature를 어느 계열로 설계할지.
+  직전 결정(외부 검증용 / 영어 한정)이 이 선택을 제약함 — latency 계열은 검증할 외부
+  corpus가 없음(영어 corpus는 전부 monologue, 대화 corpus는 비영어)
+- **선택지:** A) 발화 내부 timing 계열만 (이식 가능) / B) turn-taking 계열만 (성능 근거 있음,
+  단 영어 한정 결정과 충돌) / C) 둘 다 설계 + 이식 가능 여부 태그
+- **고른 것:** C
+- **이유:** 명시 안 됨
+- **내가 걸었던 반대:** 없음. E-DAIC raw audio 확인까지 어차피 대기가 생기고, "대화에서만
+  얻는 신호 vs 어디서든 옮기는 신호"라는 대비가 논문 구조로 쓰임. 다만 feature를 늘리면
+  화자 107명 학습에서 과적합하므로 집계 단위를 feature마다 명시하기로 함
+- **결과:** `0901_short_context_speech_features.md` — Group A(발화 내부 timing, 이식 가능) 5종,
+  Group B(turn-taking, DAIC 계열 전용) 5종, 2순위 raw audio 계열 2종
+  - 설계 근거: 지금까지 작동한 건 acoustic이 아니라 **timing 신호**임 (`lat`은 국소 경계에서
+    측정, `emb`는 화자 평균이라 뭉개짐 + ASR encoder라 text와 중복)
+  - **응답 단위 = 한 `Ellie:` 턴 뒤 연속 `Participant:` 줄 전체**로 정의. DAIC이 한 문장을
+    여러 줄로 쪼개므로 줄 단위 계산은 파편에 지배됨
+  - 현행 `pause`의 0~2초 상한이 psychomotor retardation이 나타날 **긴 쪽 꼬리를 버리고 있음**
+    → A2가 이 지점을 다룸. B1도 같은 논리로 `lat`의 median 단일값을 분위수로 확장
+  - B3(label 조건부 latency)은 `custom_taxonomy/` 실행에 의존하고, 그 1:1 구조가 필요한
+    이유 자체임
+- **다음 할 일:**
+  - [ ] 화자 스칼라 feature 개수 상한 / null test 사전 지정 기준 → 별도 갈림길
+  - [ ] 선행 확인 6항목 (DAIC 전사 filled pause 표기 여부 등) — 데이터 접근 필요
+
+## 2026-09-01 — E-DAIC 집중 · 영어 한정 유지 · feature 설계 보류
+
+- **정해야 했던 것:** 사수가 "E-DAIC은 test가 더 어려워서 성능 올릴 여지가 있으니 좀 더 보자"고
+  한 것과, 이번 세션에서 정한 "새 corpus 외부 검증용"을 어떻게 놓을지
+- **고른 것:** E-DAIC 집중. **영어 한정은 유지**(중국어·이탈리아어 corpus 제외).
+  **short-context feature 설계는 보류**
+- **이유:** 명시 안 됨. 영어 한정은 사용자가 이미 정한 것을 재확인한 것임
+- **뒤집은 것:** 문헌에서 "speech latency가 7개국에서 일반화된다"는 보고를 찾아 비영어 corpus를
+  다시 옵션으로 올렸으나, 사용자가 **영어 한정을 유지**하기로 함. 이 근거는 다시 꺼내지 말 것
+- **사수 확인 결과 반영:** E-DAIC 전사는 ASR 산출물이고 Ellie 턴은 음량이 작아 검출 안 됨.
+  오디오는 있으나 매우 작고, timestamp도 ASR 유래라 부정확함.
+  → **좋은 타임스탬프는 DAIC-WoZ에만 있음.** E-DAIC은 timing feature 확장 무대가 아니라
+  text 조건의 추가 test set으로 봄
+- **내가 걸었던 반대:** 없음 (사수 의견과 사용자 지시가 일치)
+
+## 2026-09-01 — 데이터 신청 범위: 유료 제외, 비공개는 문의 메일
+
+- **정해야 했던 것:** 영어 후보 7종 중 어디까지 실제로 연락할지
+- **고른 것:** **유료(상용 라이선스) 제외** — Voiceome. **비공개(proprietary)는 문의 메일만
+  보냄** — DEPAC. 공개 배포 + 사용 동의서 방식은 신청서 제출 — RADAR-MDD, StudentSADD 등
+- **이유:** 돈 드는 건 과하다는 판단 (사용자 표현: "돈은... 에바")
+- **내가 걸었던 반대:** "일단 7곳 다 신청 넣고 보고하자"는 안에 대해, ① 기관 서명·연구계획이
+  필요한 게 섞여 있어 "다 넣었다"가 사실과 달라질 수 있고 ② 유료 건은 예산 결정이라 혼자 못
+  정하며 ③ E-DAIC 집중으로 방향을 잡은 직후라 "왜 지금 신청하나"에 한 줄 설명이 필요하다고 함.
+  사용자가 유료를 빼는 쪽으로 조정함
+- **다음 할 일:**
+  - [ ] RADAR-MDD 신청 절차·필요 서류·소요기간 확인
+  - [ ] StudentSADD 신청서 제출
+  - [ ] DEPAC 문의 메일 초안
+
+## 2026-09-01 — StudentSADD · RADAR-MDD 동시 신청
+
+- **정해야 했던 것:** RADAR-MDD가 **전원 MDD 진단 환자 코호트**(건강 대조군 없음)라
+  DAIC과 문제 설정이 다름 — 우울/비우울 분류가 아니라 같은 사람의 시점별 증상 변동에 가까움.
+  PHQ-8을 그대로 쓴다는 장점이 이 때문에 깎임. 순위를 어떻게 할지
+- **선택지:** A) StudentSADD 먼저, RADAR-MDD는 문의만 / B) RADAR-MDD 우선 / C) 둘 다 동시
+- **고른 것:** C — 둘 다 동시에 넣고 답 오는 대로 진행
+- **이유:** 명시 안 됨
+- **확인된 절차:**
+  - StudentSADD — data agreement form을 `gr-studentsadd@wpi.edu`로, **고등교육기관 소속 이메일** 필요.
+    **주의: 배포물이 전사 + openSMILE feature이고 raw audio가 아닐 가능성** → 전사에 timestamp가
+    붙는지 신청 메일에서 같이 물을 것 (timing feature 계산 가능 여부가 여기 달림)
+  - RADAR-MDD — 공개된 신청 창구 없음. RADAR-CNS에 직접 문의해야 함
+
+## 2026-09-01 — 역할 분담 확인: text는 올리비에, speech는 사수
+
+- **정해야 했던 것:** 회의 결론 5개 중 무엇이 올리비에 몫인지. 세션 내내 #5(short-context
+  speech feature)를 본작업으로 굴렸는데, 그게 맞는 배분인지
+- **확인된 배분 (올리비에):** 멀티모달 협업이고 **text는 올리비에, speech는 사수**가 맡음
+  - #1 (text 성능 확보) — 보고 사항, 할 일 아님
+  - **#2 데이터 추가 확보 — 올리비에 몫**
+  - #3 (latency 확인) — 확인된 사실, 할 일 아님
+  - **#4 external data를 분류기 관점으로 증강 — 올리비에 몫**
+  - #5 short-context speech feature — **사수 몫**
+- **내가 틀렸던 것:** 세션 첫머리에 #5를 "가장 지적 기여가 큰 본작업"으로 추천했음. 역할 배분을
+  확인하지 않고 추천한 것이고, 그 결과 하루의 상당 부분을 다른 사람 몫에 씀.
+  `0901_short_context_speech_features.md`는 **사수 전달용 참고자료**로 성격이 바뀜
+- **다음 할 일:**
+  - [ ] **#4 착수 — external data(CODIPAS 등)를 RAG 컨텍스트가 아니라 분류기 학습 데이터로
+        쓰는 방향.** 이번 세션에서 손도 안 댄 유일한 action item임
+  - [ ] `custom_taxonomy` 실행 — #4와 #5 양쪽의 공통 병목
+
+## 2026-09-09 — 0902 사수 문서를 방향 기준점으로 채택 · 역할 배분 변경
+
+- **정해야 했던 것:** 사수가 준 `0902_summary.md`를 어느 수준으로 받아들일지
+- **고른 것:** **이 문서를 방향 판단의 기준점으로 삼음.** 이전 세션 판단과 충돌하면 문서가 이김
+- **이유:** 사용자 지시 ("이걸 기준으로 생각하는 게 맞음")
+- **뒤집힌 것 (2026-09-01 "역할 분담: text는 올리비에, speech는 사수" 결정 뒤집음):**
+  사수가 문서의 "지윤님이 봐주실 것"에 **SER 조사·평가를 올리비에에게 배정**했고
+  **GPU도 올리비에 쪽 리소스**를 쓰기로 함. "speech는 사수 몫"은 더 이상 사실이 아님
+- **우선순위가 내려간 것:** external corpus 확보(StudentSADD·RADAR-MDD, `0902_report.md`)와
+  9/1의 미착수 #4(external data를 분류기 학습 데이터로). 문서가 "DAIC-WoZ로 복귀"를 지시함.
+  단 StudentSADD는 **데이터가 이미 도착해 있음**(`studentsadd/`, 9/4) — openSMILE feature +
+  VGGish embedding + transcript이고 **원본 waveform은 아님**
+- **다음 할 일:**
+  - [ ] 사수에게 역할 배분 변경 확인받기 (SER이 올리비에 몫이 맞는지)
+
+## 2026-09-09 — SER 먼저, persona는 그 다음 · persona 범위는 API 키 전까지
+
+- **정해야 했던 것:** 사수가 배정한 2개(persona 조사 / SER 조사) 중 무엇을 먼저 할지
+- **선택지:** A) SER 먼저 / B) persona 먼저
+- **고른 것:** **A — SER 먼저.** persona는 GPU 배치 잡이 도는 동안 붙임
+- **이유:** 명시 안 됨. 판단 근거는 **DAIC 원본이 로컬에 다 있다는 것**
+  (`~/Desktop/depression/wwwdaicwoz/`, 123GB, wav 189개 = train107+dev35+test47,
+  COVAREP·FORMANT·TRANSCRIPT·split csv 전부). SER은 새로 학습하지 않고 embedding 추출만
+  하므로 오디오·split·GPU가 갖춰진 지금 바로 돌아가고, **숫자가 나오는 작업**임
+- **persona 작업 범위 (사용자 지정):** **LLM API 키가 필요한 지점 전까지.**
+  즉 설계안까지 내고, 실제 합성 세션 생성은 이번 범위 밖
+- **내가 걸었던 반대:** ① 처음에 "로컬에 오디오 없음"을 근거로 persona 먼저를 추천했는데,
+  repo 안만 뒤진 것이었고 사용자가 Desktop 경로를 알려줘 뒤집음
+  ② 0821 표에서 whisper encoder `emb`가 dev AUC 0.750 → **test 0.626**으로 무너졌음.
+  train 107명에 화자 단위로 얹는 구조는 그대로라 SER embedding도 같은 벽에 부딪힐 수 있음
+  → **돌리기 전에 성공 기준을 사전 지정할 것** (사후에 기준 만드는 일 방지)
+- **다음 할 일:**
+  - [ ] SER 후보 모델 3~5개 추려서 선택
+  - [ ] 성공 기준(무엇이 나오면 채택인지) 사전 지정 — 착수 직전 별도 갈림길
+
+## 2026-09-09 — SER 모델 3종 선정 (대조군 + 최강 후보)
+
+- **정해야 했던 것:** 어떤 SER 모델을 몇 개 돌릴지 (실험 규모)
+- **선택지:** A) 대조군+최강 3개 / B) emotion2vec+ 하나만 / C) 대조군 2개만 /
+  D) MSP-Podcast 확보 가능성부터 확인
+- **고른 것:** **A — 3개.** ⑤ whisper-large-v3 SER finetune (backbone 고정 대조군) +
+  ① emotion2vec+ + ② Emotion2Vec-S
+- **이유:** 명시 안 됨. 제시한 근거는 **결과 해석 가능성** — ⑤만 돌리면 결과가 나빠도
+  "SER이 안 먹힌다"인지 "그 커뮤니티 finetune이 부실하다"인지 구분이 안 되고,
+  ①만 돌리면 backbone이 달라 "SER 덕분인지 모델이 좋아서인지" 못 가름
+- **후보 출처 (2026-09-09 웹 검색으로 확인, 아직 다운로드/실행 안 함):**
+  - emotion2vec / emotion2vec+ — ACL 2024 Findings, arXiv 2312.15185, HF org `emotion2vec`.
+    SER 전용 self-supervised foundation model. linear layer만 얹어도 IEMOCAP SOTA 주장
+  - Emotion2Vec-S — HF `ASLP-lab/Emotion2Vec-S`. `wav.scp` 기반 batch 추출 스크립트 제공
+  - whisper-large-v3 SER finetune — HF `firdhokk/speech-emotion-recognition-with-openai-whisper-large-v3`.
+    0821의 whisper encoder(ASR용, test AUC 0.626)와 **backbone이 같아 통제 대조군이 됨**
+  - (선정 안 함) speechbrain wav2vec2-IEMOCAP — IEMOCAP이 배우 연기 데이터라 도메인 갭
+  - (선정 안 함) MSP-Podcast 계열 — 도메인은 DAIC에 가장 가까우나 **공개 체크포인트 유무 미확인**
+- **데이터 위치 확인됨:** `~/Desktop/depression/wwwdaicwoz/` — wav 189개, COVAREP·FORMANT·
+  TRANSCRIPT, `dev_split_Depression_AVEC2017.csv`, `full_test_split.csv`, 총 123GB
+- **다음 할 일:**
+  - [ ] 성공 기준 사전 지정 (무엇이 나오면 채택인지)
+  - [ ] GPU 위치 확정 및 오디오 접근 경로 정리
+
+## 2026-09-09 — 실행 환경: allen GPU · 성공 기준 2단 · 추출 단위는 사수 확인 대기
+
+- **실행 환경 확정:** 원격 `allen`(allen.media.mit.edu)의 `ojjung_whisper` 컨테이너.
+  **RTX 6000 Ada 48GB × 3**(0번은 사용 중, 1·2번 유휴), 컨테이너 안 torch 2.11+cu126 / cuda True.
+  로컬 맥은 M4 Pro 24GB / MPS만 있어 whisper-large-v3(47시간 분량)엔 부족
+- **데이터 전송:** wav 189개 **5.4GB만** 옮기면 됨 (로컬 123GB의 대부분은 CLNF 영상 feature라
+  SER에 불필요). 대상은 `~/daic_ser/`(chmod 700). **공용 서버라 사용자에게 확인받고 진행함**
+- **성공 기준 (사전 지정, 결과 보기 전에 확정):**
+  - **1차 게이트** — 기존 whisper(ASR) emb의 test AUC **0.626**을 넘는가. 넘어야 사수 가설
+    ("SER 사전학습이 ASR보다 낫다")이 성립
+  - **채택 기준** — 기존 최고 시스템(test AUC 0.881 / F1 0.797)에 얹었을 때 실제로 올라가는가
+  - 둘을 분리해 **"가설은 맞았으나 실용 이득은 없음"** 같은 결론도 그대로 쓸 수 있게 함
+  - 이유: 0821 때 speech feature들이 null test 5~7%로 사전 지정 기준에 미달해
+    "공식 확정 아님"으로 남았음. 기준이 결과보다 먼저 있어야 함
+- **보류 — embedding 추출 단위:** participant 구간만 자를지 / 세션 통으로 갈지.
+  **사용자가 사수에게 먼저 묻기로 함.** 질문 초안 작성함
+  - 쟁점: 0821 `emb`는 "whisper-v3 encoder 화자 평균 벡터"로만 적혀 있고 participant 구간
+    분리 여부가 표에 없음(`lat`/`pause`에만 "전사 타임스탬프만 사용" 표기). 세션 통으로
+    들어갔다면 **모든 참가자에게 동일한 Ellie 목소리가 섞여** 화자 간 차이를 희석했을 수 있고,
+    그렇다면 test 0.626 붕괴의 원인이 embedding 품질이 아니라 구간 분리일 수 있음
+  - 이건 **내 추론이지 확인된 사실이 아님.** 사수 답으로 확정할 것
+- **다음 할 일:**
+  - [ ] 사용자가 rsync 직접 실행 (자동 승인에서 막힘 — 임상 데이터 원격 전송)
+  - [ ] 사수 회신 후 추출 단위 확정
+  - [ ] 확정되면 emotion2vec+ / Emotion2Vec-S / whisper-large-v3 SER 3종 추출 스크립트 작성
+
+## 2026-09-09 — SER 실행용 컨테이너를 새로 띄움 (Python 3.14 회피)
+
+- **정해야 했던 것:** `ojjung_whisper` 컨테이너의 Python이 **3.14.4**인데, emotion2vec 공식
+  추출 경로인 `funasr`은 PyPI 분류자 기준 **3.12까지만 지원 표기**. 어디에 환경을 만들지
+- **선택지:** A) 컨테이너 안에 격리 venv 만들어 3.14로 시도 / B) Python 3.11 컨테이너 새로 띄움 /
+  C) funasr 안 쓰고 transformers로만 로드
+- **고른 것:** **B — 새 컨테이너.** 이미지 `pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime`
+  (기존 컨테이너와 같은 cu126 계열)
+- **이유:** 명시 안 됨
+- **내가 걸었던 반대:** A를 추천했음 — 30분이면 3.14에서 되는지 판가름 나고 안 되면 그때
+  컨테이너를 띄우면 된다는 논리. 사용자가 B를 골라 그대로 진행함. C는 내가 비추천했는데,
+  emotion2vec 공식 추출 경로가 FunASR이라 다른 경로로 뽑은 embedding이 논문 수치와 같은
+  것인지 보장이 안 되어 결과 신뢰도가 떨어지기 때문
+- **환경 사실 (2026-09-09 확인):**
+  - 기존 `ojjung_whisper` = 이미지 `ojjung-whisper:cu126-v3`, GPU 3장 전체 접근, Python 3.14.4,
+    torch 2.11.0+cu126, openai-whisper 설치됨, **transformers 없음**
+  - allen GPU: RTX 6000 Ada 48GB × 3 (0번 44GB 사용 중, 1·2번 유휴)
+  - 개인 데이터 영역 `/data/slow/ojjung/` 존재
+- **데이터 전송 완료:** `~/daic_ser/` (700) — `audio/` wav 189개 5.4G, `meta/` TRANSCRIPT 189개 +
+  split 4종(train/dev/test/full_test). 파일 모드도 700으로 조임
+  - 전송이 두 번 실패했던 원인은 **`!` 프리픽스**였음. zsh에서 `!`는 종료 상태를 뒤집는
+    연산자라 `! cd A && rsync B`가 `(! cd A) && ...`로 묶여 뒤가 통째로 건너뛰어짐.
+    cd만 실행돼 프롬프트는 바뀌고 전송은 안 됨. openrsync 문제로 오진했다가 정정함
+- **다음 할 일:**
+  - [ ] 새 컨테이너 기동 후 funasr / transformers 설치 검증
+  - [ ] 사수 회신 후 추출 단위 확정 (질문 발송 완료 여부 미확인)
+
+## 2026-09-09 — 대조군 모델 라이선스로 제외 · 추출 단위는 줄/턴/세션 3갈래로 재정의
+
+- **대조군 후보 재조사 결과:** `tiantiaf/whisper-large-v3-msp-podcast-emotion` 발견 —
+  whisper-large-v3 backbone에 **MSP-Podcast(자연발화)** 학습, INTERSPEECH 2025 SER 챌린지
+  상위 파이프라인(SAILER). 기술적으로는 원하던 대조군과 정확히 일치
+- **그러나 제외함:** 라이선스가 Open RAIL이고 **"clinical or diagnostic applications"를
+  명시적으로 금지**. 우울 스크리닝이 정면으로 걸림. 사용자 판단: "그냥 하지 말라는 거 아님?"
+  → 사수에게 묻지도 않고 후보에서 뺌. `-dim` 변형도 같은 라이선스로 추정
+- **대조군은 `firdhokk/speech-emotion-recognition-with-openai-whisper-large-v3` 유지.**
+  단 한계를 결과 보고에 반드시 명시할 것 — 학습 데이터가 RAVDESS/SAVEE/TESS/URDU 합계
+  **약 4,170개의 연기(acted) 클립**임. 자연 인터뷰와 도메인 갭이 크고, 이 모델이 부진해도
+  "SER이 안 통한다"로 읽으면 안 됨
+  - Claude가 처음 이 모델을 대조군으로 추천할 때 학습 데이터를 확인하지 않았음. 사용자가
+    "사수가 알려준 거냐"고 물어 드러남 — **모델 추천 시 학습 데이터부터 볼 것**
+
+- **추출 단위가 2갈래가 아니라 3갈래임 (사용자가 지적):** 줄 / 턴 / 세션.
+  0902 문서의 LoRA 실패 원인 "문장별로 학습했을 때 성능이 안 나옴"과 같은 축임
+- **실측 (2026-09-09, DAIC 전사 189개 전수):**
+
+  | 단위 | 개수 | 중앙값 | 3초 미만 |
+  | --- | ---: | ---: | ---: |
+  | 참가자 줄 | 32,401 | 1.96초 | 67% |
+  | 참가자 턴(연속 줄 묶음) | 10,794 | 5.16초 | 40% |
+
+  턴 길이 분위 25% 1.2초 / 50% 5.2초 / 75% 14.0초 / 95% 36.6초. 화자당 발화 9.9분
+  → **줄 단위는 SER 입력으로 부적합** (모델들이 3~10초 클립으로 학습됨)
+- **고른 것:** **추출 단위는 사수에게 물어보기로 함** (Claude 추천은 턴 단위였음)
+- **확정 — 짧은 발화 처리:** **버리지 않고 길이로 가중평균.** 최소 길이 컷 없음
+  - 이유: 짧은 대답이 잦은 것 자체가 우울 신호일 수 있어, 컷을 두면 그 신호까지 날아감
+- **다음 할 일:**
+  - [ ] 사수 메시지 발송 (추출 단위 + 기존 코드 + text/latency 점수 파일)
+  - [ ] 회신 전까지 `--unit {line,turn,session}` 전부 지원하는 추출 스크립트 작성
+
+## 2026-09-11 — 추출 단위 확정: 턴 단위 (사수 회신)
+
+- **사수 회신:** ① DAIC로 진행(E-DAIC 아님) ② 참가자 구간만 사용(세션 통째 조건 제외)
+  ③ **턴 단위** — 연속된 참가자 줄을 하나로 묶어 자름
+- **경위:** 사수의 첫 답변은 "턴별로 한 문장씩"이었는데 턴과 문장은 다른 단위라 사용자가
+  모순을 지적함. 전사를 확인해 **DAIC에는 문장부호가 사실상 없음**을 근거로 재질의함
+  - 47,371줄 중 마침표·물음표·느낌표가 있는 줄이 **2줄(0.00%)**
+  - "줄 = 문장"도 성립 안 함 — 짧은 쪽은 `um`/`yes` 같은 조각(줄 중앙값 6단어),
+    긴 쪽은 한 줄에 문장 2~3개(줄 최대 125단어, 20단어 이상이 11%)
+  - 즉 문장 단위는 구두점 복원 모델을 따로 태우지 않는 한 **존재하지 않는 선택지**였음
+  - 사용자가 전사 예시를 붙여 한 줄로 재질의 → "턴 단위" 회신 받음
+- **구현 시 걸리는 것:** 참가자 턴 최대 **1,724단어**(몇 분 분량)로 SER 모델 입력 한도를
+  넘김. 긴 턴 분할 처리 필요 — 별도 갈림길로 다룸
+- **다음 할 일:**
+  - [ ] `extract_ser.py` 작성 (`--unit turn` 확정, 길이 가중평균)
+  - [ ] 긴 턴 분할 방식 결정
+
+## 2026-09-12 — SER 1차 결과 · 사전 지정한 게이트가 허술했음을 확인
+
+- **추출 완료 (189/189, 실패 0):** `emotion2vec_plus_turn` 1024차원 4.8분,
+  `whisper_ser_turn` 256차원 26.5분. 산출물 `/work/emb/*.npz` (allen `ojjung_ser`)
+- **평가 설정:** L2 로지스틱, 정규화 강도 C는 **train 107명 안에서만** 5-fold 교차검증으로
+  선택. train 점수는 OOF, threshold는 train OOF에서 F1 최대점으로 고정 후 dev/test에 적용
+- **결과:**
+
+  | 모델 | 차원 | C | cv_auc(train) | auc_dev | auc_test | f1_test |
+  | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+  | emotion2vec_plus | 1024 | 0.0001 | 0.637 | 0.736 | **0.671** | 0.444 |
+  | whisper_ser | 256 | 0.1 | 0.662 | **0.449** | 0.636 | 0.512 |
+
+  라벨 분포는 train 28% / dev 34% / test 30% 양성으로 큰 치우침 없음
+
+- **사전 지정 기준대로는 둘 다 1차 게이트(test AUC > 0.626) 통과.** 그러나 **whisper_ser는
+  실질적으로 통과로 읽으면 안 됨** — dev AUC 0.449로 **우연(0.5) 이하**인데 test만 0.636임.
+  두 평가셋이 정반대로 나오는 건 신호가 아니라 잡음임
+- **내 설계 결함:** 1차 게이트를 **test AUC 하나로만** 지정한 것이 허술했음. dev와 test가
+  일치하는지를 조건에 넣었어야 함. 기준을 결과 본 뒤에 바꾸지 않기 위해 **사전 지정한
+  판정은 그대로 기록하고, 별도로 이 한계를 명시함**
+- **emotion2vec의 C가 격자 하한(1e-4)에 붙음** — 교차검증이 더 강한 정규화를 원했다는 뜻이라
+  모델이 거의 상수에 가까워지는 쪽으로 밀리고 있음. 격자를 더 낮게 확장해 재확인 필요
+- **참고:** 기존 whisper(ASR) emb의 낙폭은 dev 0.750 → test 0.626(-0.124),
+  emotion2vec은 0.736 → 0.671(-0.065)로 낙폭 자체는 줄어듦
+- **다음 할 일:**
+  - [ ] C 격자 확장 + dev/test 일치를 판정에 반영
+  - [ ] Emotion2Vec-S 구현 (아직 미구현, 3종 중 1종 빠짐)
+
+## 2026-09-14 — 2단계(융합 기여) 판정: emotion2vec는 latency 위에 얹으면 test에서 떨어짐
+
+- **정해야 했던 것:** SER 1차 결과(단독 test AUC 0.671) 뒤 무엇을 할지. 사용자는 설명을
+  듣고 **2단계 판정**을 고름 ("일단 2단계 하자")
+- **선택지:** A) 2단계 채택 판정 끝내기 / B) SER 3종 완주 + 평가 보수화 /
+  C) embedding 쓰는 방식 재설계(화자 평균 대신 시간 패턴) / D) SER 접고 persona 조사로
+- **고른 것:** A
+- **이유:** 남은 게 한 걸음이고 GPU·LLM 비용이 0이라 빨리 끝난다는 점 (사용자: "빨리 끝내야할듯")
+
+- **기준을 축소한 부분 (명시):** 9/9에 사전 지정한 채택 기준은 "기존 최고 조합
+  (text+latency, test AUC 0.881)에 얹어 오르는가"였음. **0821의 화자별 text 점수 파일이
+  로컬·allen 어디에도 없어서** 그 조합을 복원할 수 없었음. 대신 전사만으로 재계산 가능한
+  **latency 단독을 기준선으로 대체**함. 사용자 승인 후 진행
+- **GPU 확인:** allen GPU 3장이 꽉 차 있던 것은 전부 남의 것(mpholsch vllm Qwen3.8-27B
+  data-parallel 3, ollama). 우리 컨테이너 `ojjung_ser`/`ojjung_whisper`는 GPU 메모리 0으로
+  유휴 상태였음. 2단계는 CPU만 씀
+
+- **구현:** `ser/fuse_ser.py`. 0821 recipe 그대로 — 화자 스칼라를 train 통계로 z-score →
+  train 107명에서 로지스틱 → dev/test는 1회 통과, threshold는 logit 0 고정
+- **발견 — 전사에 Ellie가 없는 세션 3개:** pid **451, 458(dev), 480(test)** 의 전사는
+  전부 `Participant` 줄이고 `Ellie` 줄이 0개임. 질문–응답 경계가 없어 **latency가 정의 불가**.
+  0902 문서가 E-DAIC의 결함으로 적은 현상이 DAIC 안에도 3세션 존재함
+  - **결측 처리는 혼자 정하지 않고 두 방식 병기**: train 중앙값 대체(impute, dev 35/test 47로
+    0821 표와 같은 크기) / 해당 화자 제외(drop, dev 33/test 46). 결론은 두 방식에서 동일
+- **음수 latency는 유지:** 참가자가 Ellie 발화에 겹쳐 말한 경우. 화자당 비율 중앙값 7.9%,
+  50% 넘는 화자 0명. median 집계라 영향 작다고 보고 컷 두지 않음
+
+- **재현 검증 (결과 해석 전에 먼저 봄):** 내 latency 재구현 vs 0821 표(dev 0.678 / test 0.776)
+  - **test 0.773 — 재현됨** (차이 −0.003)
+  - **dev 0.627 — 재현 안 됨** (차이 −0.051). drop 방식으로도 0.639로 여전히 벗어남
+  - 즉 결측 처리 탓이 아님. **0821의 lat 정의와 내 정의가 dev에서만 갈리는 이유는 미확인.**
+    test가 소수점 셋째 자리까지 맞으므로 정의 자체가 크게 다를 가능성은 낮으나, **확정 못 함**
+
+- **결과 (impute 기준, AUC dev/test):**
+
+  | 조합 | dev | test |
+  | --- | ---: | ---: |
+  | lat 단독 | 0.627 | **0.773** |
+  | pause 단독 | 0.678 | 0.714 |
+  | lat+pause | 0.703 | 0.729 |
+  | emotion2vec 단독 | 0.736 | 0.671 |
+  | **lat + emotion2vec** | 0.750 | **0.734** |
+  | lat+pause+emotion2vec | 0.797 | 0.727 |
+  | whisper_ser 단독 | 0.449 | 0.636 |
+  | lat + whisper_ser | 0.540 | 0.697 |
+
+- **판정: 채택 기준 미달.** emotion2vec를 latency에 얹으면 **dev +0.123 / test −0.039**로
+  두 평가셋이 정반대임. 9/12에 내가 지적한 "dev와 test가 일치해야 통과로 본다"는 조건을
+  적용하면 통과 아님. whisper_ser는 dev·test 양쪽 모두 하락(−0.087/−0.076)으로 명확히 기각
+  - drop 방식에서도 같은 패턴 (emotion2vec dev +0.107 / test −0.047)
+  - **0821의 결론("emb는 전 run 무기여")이 SER embedding에서도 반복됨**
+- **F1은 판정에 쓰지 않음:** threshold를 logit 0으로 고정하면 약한 단독 feature는 양성을
+  아무도 예측하지 않아 F1이 0.000으로 퇴화함. "dF1 test +0.300"은 0에서 출발한 것이라
+  기여로 읽으면 안 됨. AUC만 봄
+- **남은 한계:** dev 35명(양성 약 12명) / test 47명(양성 약 14명)으로 표본이 작아
+  ±0.04 수준의 차이가 잡음 범위인지 아직 확인 안 됨. **bootstrap 신뢰구간 미실행**
+- **산출물:** allen `/work/eval/stage2_fusion.csv`, `/work/eval/timing_features.csv`,
+  `/work/eval/stage2_fusion.json`
+- **다음 할 일:**
+  - [ ] test AUC 차이가 잡음인지 bootstrap CI로 확인 (결론 문구가 "떨어짐" vs "구별 안 됨"으로 갈림)
+  - [ ] 0821 lat의 dev 불일치 원인 추적 (0821 코드·산출물 소재 확인 필요)
+  - [ ] 위 둘 정리해 사수 보고 — SER 가지 결론
