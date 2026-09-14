@@ -96,7 +96,33 @@ def evaluate(df, cols, name, missing="impute"):
         out[f"auc_{k}"] = float(roc_auc_score(y[m[k]], s[m[k]]))
         out[f"f1_{k}"] = float(f1_score(y[m[k]], (s[m[k]] >= 0.5).astype(int),
                                         zero_division=0))   # threshold = logit 0
-    return out
+    return out, df.assign(score=s)[["pid", "split", "y", "score"]]
+
+
+def paired_bootstrap(sa, sb, split, n_boot=10000, seed=0):
+    """CI on AUC(b) - AUC(a) from resampling the eval speakers, models held fixed.
+
+    Both models are already fitted on train; the question here is only how much the
+    difference moves with the eval sample, so the fits are not redone. Resampling is
+    paired -- the same resampled speakers go through both models.
+    """
+    j = sa.merge(sb, on=["pid", "split", "y"], suffixes=("_a", "_b"))
+    j = j[j.split == split]
+    y, a, b = j.y.values, j.score_a.values, j.score_b.values
+    obs = roc_auc_score(y, b) - roc_auc_score(y, a)
+
+    rng = np.random.default_rng(seed)
+    d, skipped = [], 0
+    for _ in range(n_boot):
+        i = rng.integers(0, len(y), len(y))
+        if len(np.unique(y[i])) < 2:          # AUC undefined on a one-class resample
+            skipped += 1
+            continue
+        d.append(roc_auc_score(y[i], b[i]) - roc_auc_score(y[i], a[i]))
+    d = np.asarray(d)
+    return dict(split=split, n=int(len(y)), n_pos=int(y.sum()), observed=float(obs),
+                lo=float(np.percentile(d, 2.5)), hi=float(np.percentile(d, 97.5)),
+                p_worse=float((d < 0).mean()), n_boot=int(len(d)), skipped=int(skipped))
 
 
 def main():
@@ -104,6 +130,8 @@ def main():
     ap.add_argument("--ser", nargs="+", required=True, help="eval_ser.py *_scores.csv files")
     ap.add_argument("--data", default="/data/daic")
     ap.add_argument("--out", default="/work/eval")
+    ap.add_argument("--boot", type=int, default=10000,
+                    help="paired bootstrap resamples; 0 to skip")
     a = ap.parse_args()
 
     meta = f"{a.data}/meta"
@@ -126,15 +154,23 @@ def main():
             print(f"  warning: {tag} covers {len(df.merge(s, on='pid'))}/{len(df)} speakers")
         sers.append((tag, s))
 
-    all_rows, checks = [], {}
+    all_rows, checks, scores = [], {}, {}
     for mode in ["impute", "drop"]:
-        rows = [evaluate(df, ["lat"], "lat", mode), evaluate(df, ["pause"], "pause", mode),
-                evaluate(df, ["lat", "pause"], "lat+pause", mode)]
+        rows = []
+
+        def add(d, cols, name):
+            r, sc = evaluate(d, cols, name, mode)
+            rows.append(r)
+            scores[(mode, name)] = sc
+
+        add(df, ["lat"], "lat")
+        add(df, ["pause"], "pause")
+        add(df, ["lat", "pause"], "lat+pause")
         for tag, s in sers:
             d2 = df.merge(s, on="pid")
-            rows.append(evaluate(d2, [tag], tag, mode))
-            rows.append(evaluate(d2, ["lat", tag], f"lat+{tag}", mode))
-            rows.append(evaluate(d2, ["lat", "pause", tag], f"lat+pause+{tag}", mode))
+            add(d2, [tag], tag)
+            add(d2, ["lat", tag], f"lat+{tag}")
+            add(d2, ["lat", "pause", tag], f"lat+pause+{tag}")
 
         lat = rows[0]
         delta = {k: lat[f"auc_{k}"] - REF_LAT[k] for k in REF_LAT}
@@ -160,13 +196,32 @@ def main():
                       f"test {r['f1_test']-lat['f1_test']:+.3f}")
         all_rows += rows
 
+    # Is the drop in test AUC bigger than eval-sample noise? Paired bootstrap on the
+    # impute tables (the primary ones, dev 35 / test 47 as in the 08-21 table).
+    boots = []
+    if a.boot:
+        print(f"\n=== paired bootstrap, {a.boot} resamples "
+              f"(eval speakers resampled; models held fixed) ===")
+        pairs = [(base, f"{base}+{tag}") for tag, _ in sers for base in ["lat", "lat+pause"]]
+        for base, fused in pairs:
+            for split in ["dev", "test"]:
+                r = paired_bootstrap(scores[("impute", base)], scores[("impute", fused)],
+                                     split, n_boot=a.boot)
+                r["base"], r["fused"] = base, fused
+                boots.append(r)
+                verdict = ("worse" if r["hi"] < 0 else
+                           "better" if r["lo"] > 0 else "indistinguishable")
+                print(f"  {split:4s} n={r['n']:2d} pos={r['n_pos']:2d} | {fused:32s} "
+                      f"dAUC {r['observed']:+.3f} [95% CI {r['lo']:+.3f}, {r['hi']:+.3f}] "
+                      f"P(worse)={r['p_worse']:.2f} -> {verdict}")
+
     res = pd.DataFrame(all_rows)[["missing", "name", "n_feat", "n_dev", "n_test",
                                   "auc_dev", "auc_test", "f1_dev", "f1_test"]]
     res.to_csv(f"{a.out}/stage2_fusion.csv", index=False)
     with open(f"{a.out}/stage2_fusion.json", "w") as f:
         json.dump(dict(reference=REF_LAT, sanity=checks, pause_cap=PAUSE_CAP,
                        no_ellie_pids=[int(p) for p in df[df.lat.isna()].pid],
-                       rows=all_rows), f, indent=2)
+                       rows=all_rows, bootstrap=boots), f, indent=2)
     print(f"\nsaved: {a.out}/stage2_fusion.csv, {a.out}/timing_features.csv")
 
 
