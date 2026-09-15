@@ -151,6 +151,8 @@ def main():
     ap.add_argument("--out", default="/work/eval")
     ap.add_argument("--repeats", type=int, default=10)
     ap.add_argument("--boot", type=int, default=40000)
+    ap.add_argument("--prereg", default="lat+contrast",
+                    help="the one judged feature set; everything else is descriptive")
     a = ap.parse_args()
 
     rows, D = build(a.npz, a.meta, a.data)
@@ -185,12 +187,12 @@ def main():
     print(f"\n=== {a.tag}: bucket contrasts on turn embeddings ===")
     print(df.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
 
-    print("\n=== pre-registered comparison: lat+contrast vs lat_only ===")
-    b = paired_bootstrap(y, cvs["lat_only"], cvs["lat+contrast"], a.boot)
+    print(f"\n=== pre-registered comparison: {a.prereg} vs lat_only ===")
+    b = paired_bootstrap(y, cvs["lat_only"], cvs[a.prereg], a.boot)
     v = "better" if b["lo"] > 0 else "worse" if b["hi"] < 0 else "unresolved"
     print(f"  cv189  dAUC {b['observed']:+.3f} 95% [{b['lo']:+.3f},{b['hi']:+.3f}] -> {v}")
     mt = (split == "test").values
-    b47 = paired_bootstrap(y[mt], offs["lat_only"][mt], offs["lat+contrast"][mt], a.boot)
+    b47 = paired_bootstrap(y[mt], offs["lat_only"][mt], offs[a.prereg][mt], a.boot)
     v47 = "better" if b47["lo"] > 0 else "worse" if b47["hi"] < 0 else "unresolved"
     print(f"  test47 dAUC {b47['observed']:+.3f} 95% [{b47['lo']:+.3f},{b47['hi']:+.3f}] "
           f"-> {v47}")
@@ -198,7 +200,7 @@ def main():
 
     print("\n=== descriptive: other sets vs lat_only on cv189 ===")
     for name in SETS:
-        if name in ("lat_only", "lat+contrast"):
+        if name in ("lat_only", a.prereg):
             continue
         bb = paired_bootstrap(y, cvs["lat_only"], cvs[name], a.boot)
         print(f"  {name:13s} {bb['observed']:+.3f} [{bb['lo']:+.3f},{bb['hi']:+.3f}]")
@@ -206,7 +208,8 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     df.to_csv(f"{a.out}/{a.tag}_contrast.csv", index=False)
     with open(f"{a.out}/{a.tag}_contrast.json", "w") as fh:
-        json.dump(dict(dim=D, rows=res, prereg_cv189=b, prereg_test47=b47), fh, indent=2)
+        json.dump(dict(dim=D, prereg=a.prereg, rows=res,
+                       prereg_cv189=b, prereg_test47=b47), fh, indent=2)
     print(f"\nsaved: {a.out}/{a.tag}_contrast.csv")
 
 

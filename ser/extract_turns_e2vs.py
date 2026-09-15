@@ -61,10 +61,19 @@ class Emotion2VecS:
         self.m = models[0].to(device).eval()
 
     def embed(self, wav):
+        """One 768-dim vector per segment.
+
+        extract_features returns x (1, frames, 768) and utt_x (1, 10, 768) -- the model
+        carries 10 extra tokens, and C2SER's own script treats utt_x as the utterance
+        representation. Those 10 tokens are averaged here to get a single vector, chosen
+        before looking at any result, the same way funasr's official path was taken for
+        emotion2vec+. The frame mean is a plausible alternative and is deliberately not
+        also tried, to keep this a single pre-specified comparison.
+        """
         x = self.torch.from_numpy(np.ascontiguousarray(wav)).float().view(1, -1).to(self.device)
         with self.torch.no_grad():
             out = self.m.extract_features(x)
-        v = out["utt_x"] if "utt_x" in out else out["x"].mean(dim=1)
+        v = out["utt_x"].mean(dim=1) if "utt_x" in out else out["x"].mean(dim=1)
         return v.squeeze(0).float().cpu().numpy()
 
 
