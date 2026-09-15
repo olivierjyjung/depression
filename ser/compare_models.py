@@ -5,11 +5,17 @@ This is the question the supervisor actually asked on 09-02 ("find out which spe
 emotion recognition model is suitable and check its performance"), so it is reported as a
 number with an interval rather than judged against a threshold.
 
-Both models are compared on identical inputs -- the same turn boundaries, the same 30s
-chunking, the same duration-weighted pooling -- and on the same instrument, the
-189-speaker repeated CV with the regularization and PCA chosen inside training folds.
-emotion2vec+ gives 1024 dimensions through funasr's official path; Emotion2Vec-S gives
-768 through C2SER's fairseq path, averaged over its 10 utterance tokens.
+Both models see the same turn boundaries, the same 30s chunking and the same
+duration-weighted pooling, and are scored on the same instrument: the 189-speaker
+repeated CV with regularization and PCA chosen inside training folds. emotion2vec+ gives
+1024 dimensions through funasr's official path; Emotion2Vec-S gives 768 through C2SER's
+fairseq path, averaged over its 10 utterance tokens.
+
+Not quite an exact input match: Emotion2Vec-S embedded 10795 turns and emotion2vec+
+10792, the 3 extra being 0.3-0.8s turns for speakers 314, 334 and 337 that the funasr
+path did not return a vector for. The shared set is a strict subset, and a sub-second
+turn carries about 0.2% of a speaker's duration-weighted mean, so this cannot move the
+comparison; it is stated rather than corrected.
 """
 import argparse, json, os, sys
 import numpy as np, pandas as pd
