@@ -1,0 +1,530 @@
+<title>SER은 도움이 되었나</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #f7f8f9;
+    --surface: #ffffff;
+    --ink: #16202b;
+    --ink-2: #4a5866;
+    --ink-3: #78848f;
+    --rule: #d8dde1;
+    --rule-soft: #e7eaed;
+    --accent: #2f5d7c;
+    --accent-soft: #e8eef3;
+    --pass: #2d6a4f;
+    --pass-soft: #e4efe8;
+    --unres: #8a6d2f;
+    --unres-soft: #f4eede;
+    --fail: #9b2c2c;
+    --fail-soft: #f6e6e4;
+    --zero: #b4bdc4;
+    --serif: "Spectral", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #12171c;
+      --surface: #191f26;
+      --ink: #e7ecf0;
+      --ink-2: #a9b5bf;
+      --ink-3: #7d8994;
+      --rule: #2c353e;
+      --rule-soft: #232b33;
+      --accent: #8fb9d6;
+      --accent-soft: #1d2a34;
+      --pass: #8ccfab;
+      --pass-soft: #1a2922;
+      --unres: #d8bd7e;
+      --unres-soft: #2a2417;
+      --fail: #e79b95;
+      --fail-soft: #2d1e1d;
+      --zero: #4d5762;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #12171c;
+    --surface: #191f26;
+    --ink: #e7ecf0;
+    --ink-2: #a9b5bf;
+    --ink-3: #7d8994;
+    --rule: #2c353e;
+    --rule-soft: #232b33;
+    --accent: #8fb9d6;
+    --accent-soft: #1d2a34;
+    --pass: #8ccfab;
+    --pass-soft: #1a2922;
+    --unres: #d8bd7e;
+    --unres-soft: #2a2417;
+    --fail: #e79b95;
+    --fail-soft: #2d1e1d;
+    --zero: #4d5762;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 52rem;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 3rem 5rem;
+  }
+  p, li { max-width: 40rem; }
+
+  /* ---- masthead ---- */
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 1.4rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-3); margin-bottom: .9rem;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 700; font-size: clamp(2rem, 5.5vw, 2.9rem);
+    line-height: 1.12; letter-spacing: -.015em; margin: 0 0 .7rem; text-wrap: balance;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: .4rem 1.4rem;
+    font-family: var(--mono); font-size: .78rem; color: var(--ink-2);
+  }
+  .meta b { font-weight: 500; color: var(--ink-3); }
+
+  /* ---- verdict block ---- */
+  .thesis {
+    margin-top: 2rem; padding: 1.5rem 1.6rem;
+    background: var(--surface); border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+  }
+  .thesis p { margin: 0; font-family: var(--serif); font-size: 1.16rem; line-height: 1.55; max-width: 38rem; }
+  .thesis strong { font-weight: 600; }
+
+  /* ---- sections ---- */
+  section { margin-top: 3.4rem; }
+  h2 {
+    font-family: var(--serif); font-size: 1.5rem; font-weight: 600; letter-spacing: -.01em;
+    margin: 0 0 .3rem; text-wrap: balance;
+    display: flex; gap: .7rem; align-items: baseline;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: .8rem; font-weight: 500; color: var(--accent);
+    flex: none; padding-top: .25rem;
+  }
+  h2 + .lede { color: var(--ink-2); margin: 0 0 1.4rem; padding-left: 2.15rem; }
+  h3 {
+    font-family: var(--sans); font-size: .95rem; font-weight: 600; margin: 2rem 0 .6rem;
+    letter-spacing: .01em;
+  }
+  h3 .q { font-family: var(--mono); color: var(--accent); margin-right: .45rem; }
+  p { margin: 0 0 1rem; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.2rem; }
+  li { margin-bottom: .45rem; }
+  strong { font-weight: 600; }
+  code, .m { font-family: var(--mono); font-size: .875em; }
+  code { background: var(--rule-soft); padding: .1em .32em; border-radius: 2px; }
+  a { color: var(--accent); }
+
+  /* ---- tables ---- */
+  .tw { overflow-x: auto; margin: 0 0 1.3rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; min-width: 30rem; }
+  caption {
+    text-align: left; font-family: var(--mono); font-size: .72rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); padding-bottom: .5rem;
+  }
+  th, td { padding: .5rem .7rem; text-align: left; border-bottom: 1px solid var(--rule-soft); }
+  thead th {
+    font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--ink-3); border-bottom: 1px solid var(--rule);
+  }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  tr.hi td { background: var(--accent-soft); }
+  tr.hi td:first-child { font-weight: 600; }
+  td .unit { color: var(--ink-3); }
+
+  /* ---- verdict chips ---- */
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: .7rem; font-weight: 500;
+    padding: .12rem .45rem; border-radius: 2px; white-space: nowrap;
+  }
+  .chip.pass { background: var(--pass-soft); color: var(--pass); }
+  .chip.unres { background: var(--unres-soft); color: var(--unres); }
+  .chip.fail { background: var(--fail-soft); color: var(--fail); }
+
+  /* ---- interval plot: the report's whole argument is whether a span crosses zero ---- */
+  .ci { margin: 0 0 1.6rem; }
+  .ci-row {
+    display: grid; grid-template-columns: 11rem 1fr 8.5rem; gap: .6rem 1rem;
+    align-items: center; padding: .5rem 0; border-bottom: 1px solid var(--rule-soft);
+  }
+  .ci-label { font-size: .82rem; line-height: 1.35; }
+  .ci-label .sub { display: block; font-family: var(--mono); font-size: .7rem; color: var(--ink-3); }
+  .ci-track {
+    position: relative; height: 1.5rem; min-width: 8rem;
+    border-left: 1px solid var(--rule-soft); border-right: 1px solid var(--rule-soft);
+  }
+  .ci-track::before {                 /* zero line */
+    content: ""; position: absolute; left: var(--zeroPos); top: 0; bottom: 0;
+    width: 1px; background: var(--zero);
+  }
+  .ci-span {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    left: var(--lo); width: calc(var(--hi) - var(--lo));
+    height: 5px; border-radius: 3px; background: currentColor; opacity: .38;
+  }
+  .ci-dot {
+    position: absolute; top: 50%; left: var(--obs);
+    width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+    background: currentColor;
+  }
+  .ci-row.is-unres { color: var(--unres); }
+  .ci-row.is-fail { color: var(--fail); }
+  .ci-num {
+    font-family: var(--mono); font-size: .74rem; font-variant-numeric: tabular-nums;
+    color: var(--ink-2); text-align: right;
+  }
+  .ci-num b { color: var(--ink); font-weight: 500; }
+  .ci-axis {
+    display: grid; grid-template-columns: 11rem 1fr 8.5rem; gap: 1rem;
+    font-family: var(--mono); font-size: .68rem; color: var(--ink-3); padding-top: .35rem;
+  }
+  .ci-axis .marks { position: relative; height: 1rem; }
+  .ci-axis .marks span { position: absolute; transform: translateX(-50%); }
+
+  /* ---- misc blocks ---- */
+  pre {
+    font-family: var(--mono); font-size: .76rem; line-height: 1.7; background: var(--surface);
+    border: 1px solid var(--rule); padding: .9rem 1rem; overflow-x: auto; margin: 0 0 1.2rem;
+  }
+  .note {
+    border-left: 3px solid var(--rule); padding: .1rem 0 .1rem 1rem; margin: 0 0 1.2rem;
+    color: var(--ink-2); font-size: .92rem;
+  }
+  .note strong { color: var(--ink); }
+  .kpi { display: flex; flex-wrap: wrap; gap: 1px; background: var(--rule); margin: 0 0 1.5rem; }
+  .kpi div { flex: 1 1 9rem; background: var(--surface); padding: .9rem 1rem; }
+  .kpi dt {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: .3rem;
+  }
+  .kpi dd {
+    margin: 0; font-family: var(--serif); font-size: 1.5rem; font-weight: 600;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .kpi dd small { font-family: var(--sans); font-size: .72rem; font-weight: 400; color: var(--ink-3); display: block; margin-top: .25rem; }
+  footer {
+    margin-top: 4rem; padding-top: 1.4rem; border-top: 1px solid var(--rule);
+    font-size: .84rem; color: var(--ink-2);
+  }
+  .tag { font-family: var(--mono); font-size: .7rem; color: var(--ink-3); }
+  @media (max-width: 620px) {
+    .ci-row, .ci-axis { grid-template-columns: 1fr; }
+    .ci-num { text-align: left; }
+    .ci-axis .marks { display: none; }
+    h2 { display: block; }
+    h2 .num { display: inline; padding-top: 0; }
+    h2 + .lede { padding-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">사수 보고 · 2026-09-16</div>
+  <h1>SER은 도움이 되었나</h1>
+  <div class="meta">
+    <span><b>담당</b> 정지윤</span>
+    <span><b>기간</b> 9/9 – 9/15</span>
+    <span><b>데이터</b> DAIC-WoZ 189명 <span class="m">(train 107 / dev 35 / test 47)</span></span>
+  </div>
+</header>
+
+<div class="thesis">
+  <p><strong>사수 가설(SER 사전학습 &gt; ASR 사전학습)은 성립했습니다.</strong> 그러나 그 위에서
+  성능을 더 올렸는지는 DAIC-WoZ 189명으로는 <strong>측정이 불가능</strong>하며, 그 한계를 숫자로
+  확정했습니다 — 지금 보이는 크기의 개선을 증명하려면 화자 <strong>210명(간신히) ~ 860명(여유)</strong>이
+  필요합니다.</p>
+</div>
+
+<section>
+  <h2><span class="num">§1</span> 사수 질문에 대한 직접 답</h2>
+
+  <h3><span class="q">Q1</span> SER용으로 학습한 모델이 ASR용보다 나은가 → <span class="chip pass">네</span></h3>
+  <div class="tw">
+    <table>
+      <caption>단독 성능, 공식 split</caption>
+      <thead><tr><th>embedding</th><th class="n">차원</th><th class="n">dev AUC</th><th class="n">test AUC</th></tr></thead>
+      <tbody>
+        <tr><td>기존 whisper encoder <span class="unit">(ASR용, 0821 표)</span></td><td class="n">1024</td><td class="n">0.750</td><td class="n">0.626</td></tr>
+        <tr class="hi"><td>emotion2vec+ <span class="unit">(SER용)</span></td><td class="n">1024</td><td class="n">0.736</td><td class="n">0.671</td></tr>
+        <tr><td>whisper-SER <span class="unit">(연기 데이터 학습)</span></td><td class="n">256</td><td class="n">0.449</td><td class="n">0.636</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>9/9에 <strong>결과 보기 전에</strong> 1차 게이트를 “test AUC가 0.626을 넘는가”로 지정했고,
+  emotion2vec+는 통과했습니다.</p>
+  <div class="note">whisper-SER은 <strong>통과로 읽지 않았습니다</strong> — dev 0.449(찍기 이하)인데
+  test만 0.636으로, 두 평가셋이 정반대면 신호가 아니라 잡음입니다. 학습 데이터가
+  RAVDESS/SAVEE/TESS/URDU 합계 약 4,170개의 <strong>연기(acted) 클립</strong>이라 자연 인터뷰와
+  도메인 갭이 큰 것도 이유입니다.</div>
+
+  <h3><span class="q">Q2</span> 어떤 SER 모델이 적합한가 → <span class="chip pass">emotion2vec+</span></h3>
+  <div class="tw">
+    <table>
+      <caption>189명 반복 교차검증 · 같은 턴 · 같은 pooling</caption>
+      <thead><tr><th>모델</th><th class="n">차원</th><th class="n">화자평균</th><th class="n">화자평균 + 응답지연</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>emotion2vec+</td><td class="n">1024</td><td class="n">0.649</td><td class="n">0.664</td></tr>
+        <tr><td>Emotion2Vec-S</td><td class="n">768</td><td class="n">0.557</td><td class="n">0.580</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>emotion2vec+가 <strong>수치상 약 0.09 앞섭니다.</strong> 단 짝지은 신뢰구간이 0을 포함해
+  <span class="m">(−0.092&nbsp;[−0.203,&nbsp;+0.019])</span> <strong>확정은 못 합니다</strong> —
+  §4의 측정 한계가 모델 비교에도 걸립니다.</p>
+  <div class="note"><strong>Emotion2Vec-S 해석 주의.</strong> S의 utterance 출력은
+  <strong>토큰 10개 × 768</strong>이고 C²SER 원설계는 그 10개를 <strong>오디오-LLM에 입력</strong>합니다.
+  저희는 로지스틱에 넣기 위해 <strong>10개를 평균</strong>했습니다(결과 보기 전 확정한 선택).
+  따라서 결론은 <strong>“문서화된 utterance 출력을 평균해서 쓰면 emotion2vec+보다 못하다”</strong>이며
+  <strong>“S가 열등한 모델”은 아닙니다.</strong> S는 독립 embedding 추출기가 아니라 LLM용
+  인코더로 설계되었습니다.</div>
+  <div class="note"><strong>라이선스.</strong> Emotion2Vec-S는 Apache 2.0으로 사용 가능합니다.
+  반면 도메인이 가장 가까웠던 <code>whisper-large-v3-msp-podcast-emotion</code>(MSP-Podcast 자연발화,
+  INTERSPEECH 2025 상위 파이프라인)은 <strong>Open RAIL로 “clinical or diagnostic applications”를
+  명시적으로 금지</strong>해 후보에서 제외했습니다.</div>
+</section>
+
+<section>
+  <h2><span class="num">§2</span> 실행한 파이프라인</h2>
+  <p class="lede">추출 소요 emotion2vec+ 4.7분 · Emotion2Vec-S 2.7분 (GPU 1장) · 실패 0건</p>
+  <ol>
+    <li><strong>오디오 확보</strong> — DAIC wav 189개(5.4GB)를 allen <code>ojjung_ser</code> 컨테이너로 전송 (권한 700)</li>
+    <li><strong>참가자 구간만 분리</strong> — 전사의 <code>Participant</code> 줄만 사용. Ellie 목소리는 189명 전원에게 동일하므로 넣으면 화자 간 차이가 희석됩니다</li>
+    <li><strong>턴 단위로 묶음</strong> (사수 9/11 확정) — 연속 <code>Participant</code> 줄 = 1턴. 줄 단위는 중앙값 1.96초·67%가 3초 미만으로 SER 모델 입력에 부적합하고, 턴으로 묶으면 중앙값 5.16초가 됩니다. 총 <strong>10,792턴</strong></li>
+    <li><strong>30초 초과 턴 분할</strong>, 50ms 미만 조각 제외, <strong>짧은 턴은 버리지 않고 길이 가중평균</strong> — 짧게 답하는 것 자체가 우울 신호일 수 있어 컷을 두지 않았습니다</li>
+    <li><strong>분류 층 직전 표현 추출</strong> (사수 지시대로) — emotion2vec+ 1024차원 + 9-class 감정 확률, Emotion2Vec-S 768차원</li>
+    <li><strong>평가</strong> — L2 로지스틱. 정규화 강도·PCA 성분 수를 <strong>train 안에서만</strong> 교차검증으로 선택, threshold도 train에서 고정, dev/test는 1회 통과</li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="num">§3</span> 2단계(융합 기여) 판정 — 측정 불가</h2>
+  <p>9/9에 채택 기준을 “기존 최고 시스템에 얹었을 때 올라가는가”로 사전 지정했습니다. 0821의
+  화자별 text 점수 파일이 남아 있지 않아, 전사만으로 재계산 가능한 <strong>응답 지연을 기준선으로
+  대체</strong>했습니다 <span class="m">(재현 검증: test 0.773 vs 0821의 0.776)</span>.</p>
+  <ul>
+    <li>emotion2vec+를 응답 지연에 얹은 결과: <strong>dev +0.123 / test −0.039</strong> — 두 평가셋이 정반대</li>
+    <li>paired bootstrap 1만 회 결과 <strong>dev·test × 4조합 8개 비교 전부 신뢰구간이 0을 포함</strong></li>
+  </ul>
+  <div class="thesis" style="border-left-color:var(--unres)">
+    <p>즉 <strong>“기여 없음”이 아니라 “기여를 확인할 수 없음”</strong>입니다. 이 구분이 이번 보고의 핵심입니다.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">§4</span> 가장 중요한 발견 — 평가셋의 검정력 한계</h2>
+  <p class="lede">test 47명(양성 14명)에서 ΔAUC 신뢰구간 반폭이 ±0.13 ~ ±0.19</p>
+
+  <dl class="kpi">
+    <div><dt>구별 가능 최소 차이</dt><dd>0.15<small>AUC · test 47명 기준</small></dd></div>
+    <div><dt>한 사람 순위 변동</dt><dd>0.03–0.07<small>AUC · 양성 14 × 음성 33 = 462쌍</small></dd></div>
+    <div><dt>필요 화자 수</dt><dd>210 – 860<small>+0.081 증명용 · 간신히 / 여유</small></dd></div>
+  </dl>
+
+  <p>직관적으로: AUC는 양성 14명 × 음성 33명 = 462쌍의 순서를 재는 값이라, <strong>한 사람의
+  순위가 바뀌면 AUC가 0.03~0.07 움직입니다.</strong> “+0.03 개선”은 곧 “한 명이 자리를 바꿨다”는 뜻입니다.</p>
+
+  <h3>함의 3가지</h3>
+  <ol>
+    <li>SER뿐 아니라 <strong>어떤 speech feature를 얹어도 이 평가셋으로는 기여 판정이 원리적으로 불가</strong>합니다</li>
+    <li>0821 표의 “융합에서 latency가 test AUC를 +0.01~0.03 올린다”도 <strong>이 잡음 범위 안</strong>이므로 해당 수치들은 재해석이 필요합니다</li>
+    <li><strong>augmentation의 논거가 정밀해집니다</strong> — “데이터가 적어서 성능이 안 나온다”가 아니라 <strong>“화자가 적어서 개선 여부를 측정할 수 없다”</strong>입니다. 후자는 화자 수를 늘리는 것 외에 해결책이 없습니다</li>
+  </ol>
+
+  <h3>검정력을 올려 다시 측정한 결과</h3>
+  <p>공식 split을 유지한 채, <strong>189명 전원을 20회 반복 교차검증</strong>하는 보조 지표를
+  추가했습니다 <span class="m">(신뢰구간 반폭 ±0.19 → ±0.085)</span>.</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>feature 조합</th><th class="n">cv189 AUC</th><th>Δ vs 응답지연 (95% CI)</th></tr></thead>
+      <tbody>
+        <tr><td>응답 지연 단독</td><td class="n">0.634</td><td class="m">—</td></tr>
+        <tr class="hi"><td>턴 단위 feature 10개 <code>all10</code></td><td class="n">0.715</td><td class="m">+0.081 [−0.005, +0.166]</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>간발의 차로 미달했습니다.</strong> 관측 개선 +0.081, 구간 반폭 ±0.085. 반폭은
+  √n에 반비례하므로, 이 크기의 개선을 증명하려면 <strong>약 210명(간신히) / 약 860명(여유)</strong>이
+  필요합니다. <strong>PsyGAT이 DAIC을 992세션으로 합성 증강한 것이 정확히 이 구간입니다.</strong></p>
+</section>
+
+<section>
+  <h2><span class="num">§5</span> 판정 3건 — 전부 사전 지정, 전부 미달</h2>
+  <p class="lede">9/14 오전에 7개 조합을 동시 비교해 다중비교 보정에 전멸한 뒤, 판정 대상을 미리
+  1개만 지정하는 방식으로 바꿨습니다. 그 결과 “모르겠다”가 아니라 “아니다”로 닫혔습니다.</p>
+
+  <div class="ci" style="--zeroPos:60%">
+    <div class="ci-row is-unres" style="--lo:59.3%;--hi:82.1%;--obs:70.8%">
+      <div class="ci-label">턴 feature 10개 <code>all10</code><span class="sub">cv189</span></div>
+      <div class="ci-track"><div class="ci-span"></div><div class="ci-dot"></div></div>
+      <div class="ci-num"><b>+0.081</b><br>[−0.005, +0.166]</div>
+    </div>
+    <div class="ci-row is-unres" style="--lo:52.4%;--hi:74.4%;--obs:63.3%">
+      <div class="ci-label">버킷 embedding 대비<span class="sub">cv189</span></div>
+      <div class="ci-track"><div class="ci-span"></div><div class="ci-dot"></div></div>
+      <div class="ci-num"><b>+0.025</b><br>[−0.057, +0.108]</div>
+    </div>
+    <div class="ci-row is-fail" style="--lo:9.7%;--hi:56.8%;--obs:33.7%">
+      <div class="ci-label">버킷 embedding 대비<span class="sub">test 47</span></div>
+      <div class="ci-track"><div class="ci-span"></div><div class="ci-dot"></div></div>
+      <div class="ci-num"><b>−0.197</b><br>[−0.377, −0.024]</div>
+    </div>
+    <div class="ci-row is-unres" style="--lo:43.2%;--hi:62.3%;--obs:52.9%">
+      <div class="ci-label">Emotion2Vec-S <code>lat+mean</code><span class="sub">cv189</span></div>
+      <div class="ci-track"><div class="ci-span"></div><div class="ci-dot"></div></div>
+      <div class="ci-num"><b>−0.053</b><br>[−0.126, +0.017]</div>
+    </div>
+    <div class="ci-row is-fail" style="--lo:5.1%;--hi:50.9%;--obs:29.1%">
+      <div class="ci-label">Emotion2Vec-S <code>lat+mean</code><span class="sub">test 47</span></div>
+      <div class="ci-track"><div class="ci-span"></div><div class="ci-dot"></div></div>
+      <div class="ci-num"><b>−0.232</b><br>[−0.412, −0.068]</div>
+    </div>
+    <div class="ci-row is-unres" style="--lo:32.9%;--hi:62.5%;--obs:47.7%">
+      <div class="ci-label">S − emotion2vec+ <span class="sub">모델 비교 · cv189</span></div>
+      <div class="ci-track"><div class="ci-span"></div><div class="ci-dot"></div></div>
+      <div class="ci-num"><b>−0.092</b><br>[−0.203, +0.019]</div>
+    </div>
+    <div class="ci-axis">
+      <div></div>
+      <div class="marks">
+        <span style="left:0%">−0.45</span><span style="left:30%">−0.22</span>
+        <span style="left:60%">0</span><span style="left:100%">+0.30</span>
+      </div>
+      <div>ΔAUC · 응답지연 대비</div>
+    </div>
+  </div>
+
+  <p>세로선이 <strong>0</strong>입니다. 구간이 0을 지나면 판정 불가, 0의 왼쪽에 완전히 놓이면
+  유의하게 나쁨입니다. <strong>0의 오른쪽에 완전히 놓인 것은 하나도 없습니다.</strong>
+  세 번 모두 <strong>응답 지연 단독(cv189 0.634)</strong>을 넘지 못했습니다.</p>
+</section>
+
+<section>
+  <h2><span class="num">§6</span> 세 번 반복 확인된 패턴 — 신호는 감정이 아니라 시간 구조</h2>
+  <p class="lede">189명 전체에서 feature 하나씩 그대로 AUC를 재본 결과</p>
+  <div class="tw">
+    <table>
+      <thead><tr><th>feature</th><th class="n">AUC</th><th>성격</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td><code>neg_mean</code> 평균 부정감정</td><td class="n">0.658</td><td>감정 — 단일 최고</td></tr>
+        <tr class="hi"><td><code>lat_symptom_vs_neutral</code> 증상 질문에 더 뜸들이는 정도</td><td class="n">0.650</td><td><strong>시간</strong></td></tr>
+        <tr><td><code>lat_p90_minus_p50</code> 지연 꼬리</td><td class="n">0.635</td><td><strong>시간</strong></td></tr>
+        <tr><td><code>lat_median</code> 기존 지표</td><td class="n">0.632</td><td><strong>시간</strong></td></tr>
+        <tr><td><code>lat_neg_corr</code> 뜸들인 턴일수록 부정적인가</td><td class="n">0.592</td><td>혼합</td></tr>
+        <tr><td><code>neg_symptom_vs_neutral</code> 증상 질문에서 감정 변화</td><td class="n">0.512</td><td>감정 — <strong>무용</strong></td></tr>
+        <tr><td><code>pos_positive_vs_neutral</code></td><td class="n">0.461</td><td>감정</td></tr>
+        <tr><td><code>neg_negative_vs_neutral</code></td><td class="n">0.449</td><td>감정</td></tr>
+        <tr><td><code>neu_mean</code></td><td class="n">0.428</td><td>감정 <span class="unit">(뒤집으면 0.572)</span></td></tr>
+        <tr><td><code>neg_p90_minus_p50</code> 부정감정 꼬리</td><td class="n">0.380</td><td>감정 <span class="unit">(<strong>뒤집으면 0.620</strong>)</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li><strong>질문 버킷 대비는 감정 쪽에서 실패했고(0.512), embedding 쪽에서도 실패했습니다(0.496 / 0.413).
+    반면 지연 쪽 대비는 두 번 다 살아남았습니다(0.650).</strong> 즉 <em>“증상 질문을 받으면 감정이
+    달라지는 정도”</em>에는 개인차가 없고, <em>“증상 질문을 받으면 대답이 늦어지는 정도”</em>에는
+    개인차가 있습니다</li>
+    <li>0901 문서의 진단(“지금까지 작동한 것은 음향 신호가 아니라 시간 구조”)이 세 번 더 확인되었습니다</li>
+    <li><code>neg_p90_minus_p50</code>가 0.380(뒤집으면 0.620)인 것은 읽을 만합니다 —
+    <strong>우울할수록 부정감정의 꼬리가 얇습니다.</strong> 최악의 순간이 튀는 것이 아니라 전반적으로
+    고르게 부정적이라는 뜻으로, <strong>blunted affect(정서 둔마)</strong>와 합치합니다.
+    화자 평균 방식으로는 잡히지 않던 양입니다</li>
+    <li>1024차원 embedding 경로(최고 0.664)보다 <strong>9-class 감정 확률 경로(0.715)가 낫습니다</strong></li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="num">§7</span> 부산물 — DAIC 전사에 질문 ID가 들어 있음</h2>
+  <p class="lede">SER 성과와 별개로, 이번 조사에서 팀에 가장 바로 쓰이는 산출물</p>
+  <p><strong>DAIC 전사 189개 중 124개는 Ellie 발화를 <code>question_id (실제 문구)</code> 형식으로
+  기록하고 있습니다.</strong></p>
+<pre>744.124  745.934  Ellie  depression_diagnosed (have you been diagnosed with depression)
+796.177  799.902  Ellie  happy_lasttime (tell me about the last time you felt really happy)</pre>
+  <ul>
+    <li>태그된 124세션에서 <code>ID → 정식 문구</code> 사전 150개를 학습해 나머지 65세션을 문구 매칭으로 복원</li>
+    <li>결과: <strong>참가자 발화의 99.7%(화자별 중앙값)가 질문 ID로 정렬됩니다.</strong> 186/189명이 50% 이상</li>
+    <li>질문 ID <strong>161종</strong>. 화자 90% 이상 5종 / 75% 이상 16종 / 50% 이상 41종. 화자당 중앙값 47종</li>
+    <li><strong>0902 문서의 “Ellie는 100여 개 고정 질문을 정해진 흐름으로 묻는다”가 데이터로 확정되었고,
+    실제 질문 목록·순서·커버리지가 확보되었습니다</strong></li>
+  </ul>
+  <p>덮이는 질문이 PHQ-8과 대응됩니다 — <code>easy_sleep</code>(91%) <code>control_temper</code>(93%)
+  <code>feel_lately</code>(85%) <code>depression_diagnosed</code>(88%) <code>ptsd_diagnosed</code>(87%)
+  <code>regret</code>(80%) <code>last_argument</code>(96%) <code>sleep_affects</code>(66%)
+  <code>behavior_changes</code>(66%) <code>happy_lasttime</code>(64%).</p>
+  <div class="thesis" style="border-left-color:var(--pass)">
+    <p>→ <strong>augmentation의 Ellie LLM이 따라야 할 질문 흐름 사양으로 즉시 쓸 수 있습니다.</strong></p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">§8</span> 한계 및 주의사항</h2>
+  <ol>
+    <li><strong>감정 분포가 한쪽으로 쏠려 있음</strong> — 발화 길이 가중 기준 sad 0.47 / happy 0.21 /
+    neutral 0.20 / unknown 0.10, 나머지(angry·disgusted·fearful·surprised) 합 0.015. 즉 여기서
+    “부정감정”은 <strong>사실상 sad 확률 하나</strong>입니다. 조용하고 느린 인터뷰 말투를 모델이
+    전반적으로 sad로 읽는 도메인 편향일 수 있습니다</li>
+    <li><strong>Emotion2Vec-S의 pooling은 저희 선택</strong> — §1 Q2 참고</li>
+    <li><strong>전사에 Ellie 줄이 아예 없는 세션 3개</strong> <span class="m">(pid 451·458·480)</span>.
+    응답 지연이 정의 불가하여 train 중앙값 대체 / 해당 화자 제외 두 방식을 모두 보고했고 결론은
+    동일했습니다. 0902 문서가 E-DAIC의 결함으로 지적한 현상이 DAIC 안에도 존재합니다</li>
+    <li><strong>0821 lat의 dev 값을 재현하지 못했습니다</strong> — test는 0.773 vs 0.776으로
+    일치하나 dev는 0.627 vs 0.678로 벗어납니다. 원인 미확인이며, 0821 코드·산출물 소재 확인이 필요합니다</li>
+    <li><strong>cv189는 보조 지표입니다</strong> — 공식 split을 벗어나므로 0821 표나 논문 수치와
+    직접 비교할 수 없습니다. 공식 split 수치는 그대로 유지했습니다</li>
+    <li><strong>저희 평가 코드에서 버그를 한 건 발견해 정정했습니다</strong> — 폴드별 예측 확률을
+    척도 보정 없이 합쳐 AUC가 0.08~0.12 깎이고 있었습니다(응답 지연 0.557 → <strong>0.634</strong>).
+    단일 feature의 “값 그대로 AUC”와 “out-of-fold AUC”가 달라 발견했습니다. 이 버그로 한 번
+    잘못된 결론(+0.142, “처음으로 잡음을 넘었다”)을 냈다가 뒤집었으며, 본 보고서 수치는 모두
+    수정 후 값입니다</li>
+    <li><strong>Emotion2Vec-S 환경 제약</strong> — fairseq 0.12.2 + hydra 1.0.7 + omegaconf 2.0.x는
+    Python 3.11에서 동작하지 않습니다. 별도 conda env(Python 3.10) + timm 0.6.x 고정 +
+    torchvision 재설치가 필요합니다. 상세는 <code>DECISIONS.md</code> 2026-09-15 항목에 기록했습니다</li>
+  </ol>
+</section>
+
+<section>
+  <h2><span class="num">§9</span> 판단 요청 사항</h2>
+  <ol>
+    <li><strong>speech 가지를 화자 수 확보 전까지 보류할지.</strong> 현 상태로는 무엇을 만들어도
+    개선 증명이 불가하며, 이는 feature 설계 문제가 아니라 평가셋 크기 문제입니다</li>
+    <li><strong>augmentation을 “측정 가능성 확보” 목표로 재정의할지.</strong> 목표 화자 수를
+    <strong>210~860명</strong>으로 두면 근거가 명확해집니다 (PsyGAT 992세션이 이 구간)</li>
+    <li><strong>Emotion2Vec-S를 원설계대로 재시도할지</strong> — 10개 토큰을 평균하지 않고
+    오디오-LLM 인코더로 사용하는 경로. 저희 평균 방식의 결과만으로 S를 기각하기에는 근거가 약합니다</li>
+    <li><strong>시간 구조(timing) 계열에 집중할지.</strong> 세 번의 시험에서 살아남은 것은 전부
+    시간 관련 feature였습니다. 0901 문서의 short-context timing feature 설계서를 이 방향으로
+    살릴 수 있습니다</li>
+  </ol>
+</section>
+
+<footer>
+  <p><strong>산출물 위치</strong></p>
+  <div class="tw">
+    <table>
+      <tbody>
+        <tr><td class="tag">브랜치 <code>worktree-ser-stage2-fusion</code></td><td>코드 전체 + <code>DECISIONS.md</code> (일자별 결정·수치 기록)</td></tr>
+        <tr><td class="tag"><code>ser/extract_turns_ser.py</code><br><code>ser/extract_turns_e2vs.py</code></td><td>턴별 추출 (emotion2vec+ / Emotion2Vec-S)</td></tr>
+        <tr><td class="tag"><code>ser/map_question_ids.py</code><br><code>ser/question_map.csv</code></td><td>질문 ID 사전·커버리지 (§7)</td></tr>
+        <tr><td class="tag"><code>ser/turn_features.py</code><br><code>ser/eval_features.py</code></td><td>feature 10개 + 이중 평가</td></tr>
+        <tr><td class="tag"><code>ser/emb_contrast.py</code><br><code>ser/compare_models.py</code></td><td>버킷 embedding 대비 / 모델 비교</td></tr>
+        <tr><td class="tag">allen <code>/work/emb/</code>, <code>/work/eval/</code></td><td>embedding·점수·평가 결과 파일</td></tr>
+      </tbody>
+    </table>
+  </div>
+</footer>
+
+</div>
